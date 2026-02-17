@@ -70,7 +70,7 @@ services:
       - "traefik.http.routers.openobserve-ui.entrypoints=websecure"
       - "traefik.http.routers.openobserve-ui.tls.certresolver=letsencrypt"
       - "traefik.http.routers.openobserve-ui.service=openobserve-http"
-      - "traefik.http.routers.openobserve-ui.middlewares=security-headers@docker"
+      - "traefik.http.routers.openobserve-ui.middlewares=security-headers"
 
       # ── OTLP HTTP receiver on subdomain ──
       - "traefik.http.routers.openobserve-otel.rule=Host(`${OTEL_DOMAIN:-otel.${OPENOBSERVE_DOMAIN}}`)"
