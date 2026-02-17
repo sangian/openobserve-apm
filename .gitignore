@@ -1,0 +1,33 @@
+# Environment files
+.env
+
+# Logs
+*.log
+logs/
+
+# Backup files
+backup/
+*.tar.gz
+*.zip
+
+# SSL certificates
+traefik/acme.json
+letsencrypt/
+
+# OpenObserve data
+data/
+
+# Temporary files
+tmp/
+.tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

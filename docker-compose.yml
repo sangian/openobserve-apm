@@ -1,0 +1,100 @@
+# =============================================================================
+# OpenObserve APM - Production Grade Setup
+# =============================================================================
+# OpenObserve is a single binary — no separate database needed!
+# Resource limits are configurable via environment variables.
+# Use ./setup.sh to select a VPS preset (4gb/8gb/12gb/24gb)
+# Or manually set variables in .env
+
+services:
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:v0.14.5
+    container_name: openobserve
+    restart: unless-stopped
+    networks:
+      - traefik-network
+    volumes:
+      - openobserve-data:${ZO_DATA_DIR:-/data}
+    environment:
+      # Authentication
+      ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL}
+      ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD}
+
+      # Storage configuration
+      ZO_LOCAL_MODE_STORAGE: ${ZO_LOCAL_MODE_STORAGE:-disk}
+      ZO_DATA_DIR: ${ZO_DATA_DIR:-/data}
+
+      # S3 configuration (only used when ZO_LOCAL_MODE_STORAGE=s3)
+      ZO_S3_SERVER_URL: ${ZO_S3_SERVER_URL:-}
+      ZO_S3_REGION_NAME: ${ZO_S3_REGION_NAME:-}
+      ZO_S3_ACCESS_KEY: ${ZO_S3_ACCESS_KEY:-}
+      ZO_S3_SECRET_KEY: ${ZO_S3_SECRET_KEY:-}
+      ZO_S3_BUCKET_NAME: ${ZO_S3_BUCKET_NAME:-}
+
+      # Performance tuning (from preset)
+      ZO_MEM_TABLE_MAX_SIZE: ${ZO_MEM_TABLE_MAX_SIZE:-1073741824}
+      ZO_COMPACT_MAX_FILE_SIZE: ${ZO_COMPACT_MAX_FILE_SIZE:-268435456}
+      ZO_COMPACT_INTERVAL: ${ZO_COMPACT_INTERVAL:-60}
+      ZO_DATA_WAL_MEMORY_MODE_ENABLED: ${ZO_DATA_WAL_MEMORY_MODE_ENABLED:-false}
+
+      # Data retention
+      ZO_COMPACT_DATA_RETENTION_DAYS: ${ZO_COMPACT_DATA_RETENTION_DAYS:-30}
+
+      # Telemetry
+      ZO_TELEMETRY_ENABLED: ${ZO_TELEMETRY_ENABLED:-false}
+
+      # Logging
+      RUST_LOG: ${RUST_LOG:-info}
+
+      # Timezone
+      TZ: ${TZ:-UTC}
+    mem_limit: ${OPENOBSERVE_MEM_LIMIT:-2g}
+    mem_reservation: ${OPENOBSERVE_MEM_RESERVATION:-1g}
+    cpus: ${OPENOBSERVE_CPUS:-2.0}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=true"
+
+      # ── OpenObserve UI + API (HTTP) ──
+      - "traefik.http.routers.openobserve-ui.rule=Host(`${OPENOBSERVE_DOMAIN}`)"
+      - "traefik.http.routers.openobserve-ui.entrypoints=websecure"
+      - "traefik.http.routers.openobserve-ui.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.openobserve-ui.service=openobserve-http"
+      - "traefik.http.routers.openobserve-ui.middlewares=security-headers@docker"
+
+      # ── OTLP HTTP receiver on subdomain ──
+      - "traefik.http.routers.openobserve-otel.rule=Host(`${OTEL_DOMAIN:-otel.${OPENOBSERVE_DOMAIN}}`)"
+      - "traefik.http.routers.openobserve-otel.entrypoints=websecure"
+      - "traefik.http.routers.openobserve-otel.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.openobserve-otel.service=openobserve-http"
+
+      # HTTP service (UI + API + OTLP HTTP all on port 5080)
+      - "traefik.http.services.openobserve-http.loadbalancer.server.port=5080"
+
+      # ── OTLP gRPC receiver on TCP entrypoint (subdomain via SNI) ──
+      - "traefik.tcp.routers.openobserve-grpc.rule=HostSNI(`${OTEL_GRPC_DOMAIN:-otel-grpc.${OPENOBSERVE_DOMAIN}}`)"
+      - "traefik.tcp.routers.openobserve-grpc.entrypoints=otlp-grpc"
+      - "traefik.tcp.routers.openobserve-grpc.tls.certresolver=letsencrypt"
+      - "traefik.tcp.routers.openobserve-grpc.service=openobserve-grpc"
+      - "traefik.tcp.services.openobserve-grpc.loadbalancer.server.port=5081"
+
+      - "traefik.docker.network=traefik-network"
+
+networks:
+  traefik-network:
+    external: true
+    name: traefik-network
+
+volumes:
+  openobserve-data:
+    driver: local
