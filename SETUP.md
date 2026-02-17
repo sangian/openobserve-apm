@@ -4,19 +4,18 @@
 
 - **VPS**: Ubuntu 22.04+ (or any Linux with Docker support), 4GB+ RAM
 - **Docker**: 20.10+ with Compose v2
-- **Domain**: DNS A records pointing to your VPS IP
-- **Firewall**: Ports 80, 443, 4317 open
+- **External Traefik**: Traefik reverse proxy running in another container with traefik-network
+- **Domain**: DNS A records pointing to your server IP
 
 ### DNS Configuration
 
-Create the following DNS A records pointing to your VPS IP:
+Create the following DNS A records pointing to your server IP:
 
 | Record | Type | Value |
 |--------|------|-------|
-| `observe.yourdomain.com` | A | Your VPS IP |
-| `traefik.yourdomain.com` | A | Your VPS IP |
-| `otel.yourdomain.com` | A | Your VPS IP |
-| `otel-grpc.yourdomain.com` | A | Your VPS IP |
+| `observe.yourdomain.com` | A | Your Server IP |
+| `otel.yourdomain.com` | A | Your Server IP |
+| `otel-grpc.yourdomain.com` | A | Your Server IP |
 
 ### Install Docker
 
@@ -66,28 +65,22 @@ nano .env
 ```env
 # Your domains
 OPENOBSERVE_DOMAIN=observe.yourdomain.com
-TRAEFIK_DOMAIN=traefik.yourdomain.com
 OTEL_DOMAIN=otel.yourdomain.com
 OTEL_GRPC_DOMAIN=otel-grpc.yourdomain.com
-
-# SSL email
-LETSENCRYPT_EMAIL=you@yourdomain.com
 
 # OpenObserve credentials (CHANGE THESE!)
 ZO_ROOT_USER_EMAIL=admin@yourdomain.com
 ZO_ROOT_USER_PASSWORD=YourStrongPassword123!
-
-# Traefik dashboard password (generate with ./generate-password.sh)
-TRAEFIK_DASHBOARD_USERS=admin:$$apr1$$...
 ```
 
-### 4. Generate Traefik Password
+### 4. Ensure External Traefik Network
 
 ```bash
-./generate-password.sh
+# If traefik-network doesn't exist yet, create it
+docker network create traefik-network
 ```
 
-Copy the output to `TRAEFIK_DASHBOARD_USERS` in `.env`.
+Make sure your external Traefik container is connected to this network.
 
 ### 5. Start Services
 
@@ -98,7 +91,8 @@ Copy the output to `TRAEFIK_DASHBOARD_USERS` in `.env`.
 ### 6. Verify
 
 - **OpenObserve UI**: `https://observe.yourdomain.com`
-- **Traefik Dashboard**: `https://traefik.yourdomain.com/dashboard/`
+
+Note: Your external Traefik instance must be configured to route to the OpenObserve container via traefik-network.
 
 ## Storage Configuration
 
@@ -193,20 +187,15 @@ Sdk.CreateTracerProviderBuilder()
 
 ### Firewall
 
-```bash
-sudo ufw allow 80/tcp    # HTTP (Let's Encrypt + redirect)
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw allow 4317/tcp  # OTLP gRPC
-sudo ufw enable
-```
+Firewall ports are managed by your external Traefik:
+- Port 80, 443 for HTTPS traffic
+- Port 4317 for OTLP gRPC
 
 ### Checklist
 
 - [ ] Changed `ZO_ROOT_USER_PASSWORD` from default
-- [ ] Changed `TRAEFIK_DASHBOARD_USERS` from default
-- [ ] Set valid `LETSENCRYPT_EMAIL`
-- [ ] DNS records point to VPS
-- [ ] Firewall configured
+- [ ] DNS records point to server
+- [ ] External Traefik configured with SSL
 - [ ] Regular backups scheduled
 
 ## Backup & Restore
@@ -221,12 +210,6 @@ docker run --rm \
   -v openobserve-apm_openobserve-data:/data \
   -v $(pwd)/backup:/backup \
   alpine tar czf /backup/openobserve-$(date +%Y%m%d).tar.gz /data
-
-# Backup Traefik certificates
-docker run --rm \
-  -v openobserve-apm_traefik-certificates:/certs \
-  -v $(pwd)/backup:/backup \
-  alpine tar czf /backup/traefik-$(date +%Y%m%d).tar.gz /certs
 ```
 
 ### Restore
@@ -255,7 +238,6 @@ docker compose up -d
 
 ```bash
 docker compose logs -f openobserve
-docker compose -f docker-compose.traefik.yml logs -f traefik
 ```
 
 ### Resource Monitoring

@@ -1,12 +1,12 @@
 # OpenObserve APM - Production Docker Setup
 
-Production-grade Docker Compose setup for [OpenObserve](https://openobserve.ai/) — a high-performance, Rust-based observability platform that accepts logs, metrics, and traces via OpenTelemetry (OTLP). Includes Traefik reverse proxy with automatic Let's Encrypt SSL.
+Production-grade Docker Compose setup for [OpenObserve](https://openobserve.ai/) — a high-performance, Rust-based observability platform that accepts logs, metrics, and traces via OpenTelemetry (OTLP). Designed to work with an external Traefik reverse proxy.
 
 ## Features
 
 - ✅ **OpenObserve v0.14.5** — Single binary, no separate database needed
 - ✅ **OpenTelemetry native** — OTLP traces, metrics, and logs out of the box
-- ✅ **Traefik v3.3** with automatic Let's Encrypt SSL
+- ✅ **External Traefik ready** — Works with external Traefik reverse proxy
 - ✅ **VPS presets** for 4GB/8GB/12GB/24GB RAM
 - ✅ **Flexible storage** — Local disk (default) or S3-compatible (Contabo, MinIO, AWS)
 - ✅ **Built-in auth** — No external auth proxy needed
@@ -20,18 +20,20 @@ Production-grade Docker Compose setup for [OpenObserve](https://openobserve.ai/)
 git clone https://github.com/sangian/openobserve-apm.git
 cd openobserve-apm
 
-# 2. Run setup (select your VPS size)
+# 2. Ensure external Traefik network exists
+docker network create traefik-network
+
+# 3. Run setup (select your VPS size)
 ./setup.sh
 
-# 3. Edit .env with your domains, email, and credentials
+# 4. Edit .env with your domains and credentials
 nano .env
 
-# 4. Start everything
+# 5. Start OpenObserve
 ./start.sh
 
-# 5. Access
+# 6. Access
 # OpenObserve UI: https://observe.yourdomain.com
-# Traefik Dashboard: https://traefik.yourdomain.com/dashboard/
 ```
 
 ## Documentation
@@ -46,7 +48,7 @@ nano .env
 
 ```
                          Internet
-                            │
+                            │ (External)
                      ┌──────▼──────┐
                      │   Traefik   │
                      │  :80 :443   │
@@ -81,9 +83,9 @@ nano .env
 
 - Docker 20.10+
 - Docker Compose 2.0+
+- External Traefik reverse proxy with traefik-network
 - Domain name with DNS configured
 - VPS with 4GB+ RAM
-- Ports 80, 443, 4317 open
 
 ## License
 

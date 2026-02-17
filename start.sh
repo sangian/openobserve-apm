@@ -30,7 +30,7 @@ set -a
 set +a
 
 # Validate required variables
-REQUIRED_VARS=("OPENOBSERVE_DOMAIN" "TRAEFIK_DOMAIN" "LETSENCRYPT_EMAIL" "ZO_ROOT_USER_EMAIL" "ZO_ROOT_USER_PASSWORD" "TRAEFIK_DASHBOARD_USERS")
+REQUIRED_VARS=("OPENOBSERVE_DOMAIN" "ZO_ROOT_USER_EMAIL" "ZO_ROOT_USER_PASSWORD")
 MISSING_VARS=()
 
 for VAR in "${REQUIRED_VARS[@]}"; do
@@ -78,36 +78,18 @@ echo "✓ Using: $COMPOSE_CMD"
 echo "✓ Environment configuration validated"
 echo ""
 
-# Create Traefik network if it doesn't exist
+# Check if external Traefik network exists
 if ! docker network inspect traefik-network > /dev/null 2>&1; then
-    echo "Creating traefik-network..."
-    docker network create traefik-network
-    echo "✓ Network created"
+    echo "ERROR: traefik-network does not exist!"
+    echo ""
+    echo "This setup requires an external Traefik instance."
+    echo "Make sure your external Traefik container has created the traefik-network:"
+    echo "  docker network create traefik-network"
+    echo ""
+    exit 1
 else
-    echo "✓ Network traefik-network already exists"
+    echo "✓ Network traefik-network exists"
 fi
-echo ""
-
-# Function to check if a service is running
-is_running() {
-    [ "$(docker ps -q -f name=$1)" ] && return 0 || return 1
-}
-
-# Start Traefik
-echo "========================================"
-echo "Starting Traefik..."
-echo "========================================"
-if is_running "traefik"; then
-    echo "Traefik is already running"
-else
-    $COMPOSE_CMD -f docker-compose.traefik.yml up -d
-    echo "✓ Traefik started"
-fi
-echo ""
-
-# Wait for Traefik to be ready
-echo "Waiting for Traefik to be healthy..."
-sleep 5
 echo ""
 
 # Start OpenObserve
@@ -135,14 +117,12 @@ echo "========================================"
 echo ""
 echo "Access your services at:"
 echo "  - OpenObserve UI:     https://${OPENOBSERVE_DOMAIN}"
-echo "  - Traefik Dashboard:  https://${TRAEFIK_DOMAIN}/dashboard/"
 echo ""
 echo "OpenTelemetry endpoints:"
 echo "  - OTLP HTTP:  https://${OTEL_DOMAIN:-otel.${OPENOBSERVE_DOMAIN}}"
 echo "  - OTLP gRPC:  https://${OTEL_GRPC_DOMAIN:-otel-grpc.${OPENOBSERVE_DOMAIN}}:4317"
 echo ""
-echo "Note: SSL certificates may take a few minutes to be issued"
-echo "      by Let's Encrypt on first startup."
+echo "Note: SSL certificates are managed by your external Traefik instance."
 echo ""
 echo "Check logs with:"
 echo "  $COMPOSE_CMD logs -f"

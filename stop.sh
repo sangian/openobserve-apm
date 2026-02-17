@@ -21,15 +21,10 @@ echo "========================================"
 echo ""
 
 # Parse arguments
-STOP_TRAEFIK=false
 REMOVE_VOLUMES=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --with-traefik)
-            STOP_TRAEFIK=true
-            shift
-            ;;
         --remove-volumes)
             REMOVE_VOLUMES=true
             shift
@@ -38,9 +33,11 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./stop.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --with-traefik     Also stop Traefik service"
             echo "  --remove-volumes   Remove all volumes (WARNING: deletes data!)"
             echo "  --help             Show this help message"
+            echo ""
+            echo "Note: This script only stops OpenObserve."
+            echo "      Traefik is managed externally."
             echo ""
             exit 0
             ;;
@@ -62,19 +59,6 @@ else
     echo "✓ OpenObserve stopped"
 fi
 echo ""
-
-# Stop Traefik if requested
-if [ "$STOP_TRAEFIK" = true ]; then
-    echo "Stopping Traefik..."
-    if [ "$REMOVE_VOLUMES" = true ]; then
-        $COMPOSE_CMD -f docker-compose.traefik.yml down -v
-        echo "✓ Traefik stopped and volumes removed"
-    else
-        $COMPOSE_CMD -f docker-compose.traefik.yml down
-        echo "✓ Traefik stopped"
-    fi
-    echo ""
-fi
 
 echo "========================================"
 echo "Shutdown Complete!"

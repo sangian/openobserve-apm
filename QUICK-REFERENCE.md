@@ -5,9 +5,13 @@
 ```bash
 git clone https://github.com/sangian/openobserve-apm.git
 cd openobserve-apm
+
+# Ensure external Traefik network exists
+docker network create traefik-network
+
 ./setup.sh          # Select VPS preset
 nano .env           # Configure domains + credentials
-./start.sh          # Launch everything
+./start.sh          # Launch OpenObserve
 ```
 
 ## Service Management
@@ -16,21 +20,17 @@ nano .env           # Configure domains + credentials
 # Start
 ./start.sh
 
-# Stop (OpenObserve only)
+# Stop
 ./stop.sh
 
-# Stop everything
-./stop.sh --with-traefik
-
 # Stop and delete all data
-./stop.sh --with-traefik --remove-volumes
+./stop.sh --remove-volumes
 
 # Restart OpenObserve
 docker compose restart openobserve
 
 # View logs
 docker compose logs -f openobserve
-docker compose -f docker-compose.traefik.yml logs -f traefik
 
 # Check status
 docker compose ps
@@ -42,9 +42,6 @@ docker stats
 ```bash
 # OpenObserve
 docker exec openobserve wget -q -O- http://localhost:5080/healthz
-
-# Traefik
-docker exec traefik traefik healthcheck --ping
 ```
 
 ## Update
@@ -52,8 +49,6 @@ docker exec traefik traefik healthcheck --ping
 ```bash
 docker compose pull
 docker compose up -d
-docker compose -f docker-compose.traefik.yml pull
-docker compose -f docker-compose.traefik.yml up -d
 ```
 
 ## Backup & Restore
@@ -80,7 +75,6 @@ docker compose up -d
 | Service | URL |
 |---------|-----|
 | OpenObserve UI | `https://${OPENOBSERVE_DOMAIN}` |
-| Traefik Dashboard | `https://${TRAEFIK_DOMAIN}/dashboard/` |
 | OTLP HTTP | `https://${OTEL_DOMAIN}/api/default/v1/traces` |
 | OTLP gRPC | `${OTEL_GRPC_DOMAIN}:4317` |
 
@@ -88,12 +82,10 @@ docker compose up -d
 
 | Port | Purpose |
 |------|---------|
-| 80 | HTTP → HTTPS redirect |
-| 443 | HTTPS (UI, API, OTLP HTTP) |
-| 4317 | OTLP gRPC |
 | 5080 | OpenObserve HTTP (internal) |
 | 5081 | OpenObserve gRPC (internal) |
-| 8081 | Traefik Dashboard (localhost) |
+
+Note: External ports (80, 443, 4317) are managed by your external Traefik instance.
 
 ## Key Environment Variables
 
@@ -120,8 +112,6 @@ curl -u "admin@yourdomain.com:password" \
 ## Security Checklist
 
 - [ ] Changed `ZO_ROOT_USER_PASSWORD`
-- [ ] Changed `TRAEFIK_DASHBOARD_USERS`
-- [ ] Set `LETSENCRYPT_EMAIL`
 - [ ] DNS records configured
-- [ ] Firewall: allow 80, 443, 4317
+- [ ] External Traefik configured with SSL
 - [ ] Backups scheduled

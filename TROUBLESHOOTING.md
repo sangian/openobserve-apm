@@ -23,7 +23,6 @@ docker network ls | grep traefik
 **Check logs:**
 ```bash
 docker compose logs openobserve
-docker compose -f docker-compose.traefik.yml logs traefik
 ```
 
 **Insufficient memory:**
@@ -32,29 +31,32 @@ free -h
 # If low, use a smaller preset: ./setup.sh 4gb
 ```
 
-**Port conflicts:**
+**Port conflicts (if exposing ports directly):**
 ```bash
-sudo netstat -tlnp | grep -E ':(80|443|4317|5080|5081)'
+sudo netstat -tlnp | grep -E ':(5080|5081)'
 ```
+
+Note: Ports 80, 443, 4317 are managed by your external Traefik instance.
 
 ### 2. SSL Certificate Issues
 
+SSL certificates are managed by your external Traefik instance.
+
+**Verify DNS:**
 ```bash
-# Check Traefik logs for ACME errors
-docker compose -f docker-compose.traefik.yml logs traefik | grep -i acme
-
-# Verify DNS
 dig +short observe.yourdomain.com
+```
 
-# Test certificate
+**Test certificate:**
+```bash
 curl -vI https://observe.yourdomain.com
 ```
 
 **Solutions:**
-- Ensure ports 80 and 443 are open
-- Verify DNS A records point to your VPS IP
-- Check `LETSENCRYPT_EMAIL` is set in `.env`
-- Wait a few minutes for first-time certificate issuance
+- Ensure your external Traefik is properly configured for SSL
+- Verify DNS A records point to your server IP
+- Check your external Traefik logs for ACME/Let's Encrypt errors
+- Ensure ports 80 and 443 are accessible to your Traefik instance
 
 ### 3. Cannot Access OpenObserve UI
 
@@ -62,17 +64,15 @@ curl -vI https://observe.yourdomain.com
 # Check if OpenObserve is healthy
 docker compose ps
 
-# Check if Traefik can reach OpenObserve
-docker exec traefik wget -q -O- http://openobserve:5080/healthz
-
 # Verify network
 docker network inspect traefik-network
 ```
 
 **Solutions:**
-- Ensure `traefik-network` exists: `docker network create traefik-network`
-- Check `OPENOBSERVE_DOMAIN` matches your DNS
-- Restart services: `docker compose down && docker compose up -d`
+- Ensure `traefik-network` exists and is connected to your external Traefik
+- Check `OPENOBSERVE_DOMAIN` matches your DNS and Traefik configuration
+- Verify your external Traefik is routing to the OpenObserve container
+- Restart OpenObserve: `docker compose down && docker compose up -d`
 
 ### 4. Cannot Login to OpenObserve
 
@@ -151,8 +151,10 @@ docker system df
 ### Complete Reset
 
 ```bash
-./stop.sh --with-traefik --remove-volumes
+./stop.sh --remove-volumes
 docker network rm traefik-network 2>/dev/null
+# Recreate network with external Traefik
+docker network create traefik-network
 ./start.sh
 ```
 
@@ -188,7 +190,7 @@ $(docker stats --no-stream)
 === OpenObserve Logs (last 50) ===
 $(docker compose logs --tail=50 openobserve)
 
-=== Traefik Logs (last 50) ===
-$(docker compose -f docker-compose.traefik.yml logs --tail=50 traefik)
+=== Network ===
+$(docker network inspect traefik-network)
 EOF
 ```
