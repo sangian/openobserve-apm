@@ -8,7 +8,7 @@
 
 services:
   openobserve:
-    image: public.ecr.aws/zinclabs/openobserve:v0.14.5
+    image: public.ecr.aws/zinclabs/openobserve:v0.60.0
     container_name: openobserve
     restart: unless-stopped
     networks:
