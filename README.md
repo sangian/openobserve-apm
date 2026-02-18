@@ -1,10 +1,10 @@
-# OpenObserve APM - Production Docker Setup
+# OpenObserve APM - Docker Setup
 
-Production-grade Docker Compose setup for [OpenObserve](https://openobserve.ai/) — a high-performance, Rust-based observability platform that accepts logs, metrics, and traces via OpenTelemetry (OTLP). Designed to work with an external Traefik reverse proxy.
+Docker Compose setup for [OpenObserve](https://openobserve.ai/) — a high-performance, Rust-based observability platform that accepts logs, metrics, and traces via OpenTelemetry (OTLP). Designed to work with an external Traefik reverse proxy.
 
 ## Features
 
-- ✅ **OpenObserve v0.14.5** — Single binary, no separate database needed
+- ✅ **OpenObserve v0.60.0** — Single binary, no separate database needed
 - ✅ **OpenTelemetry native** — OTLP traces, metrics, and logs out of the box
 - ✅ **External Traefik ready** — Works with external Traefik reverse proxy
 - ✅ **VPS presets** for 4GB/8GB/12GB/24GB RAM
